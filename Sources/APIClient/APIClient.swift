@@ -4,11 +4,9 @@
 
 import Foundation
 
-// MARK: - APIClient
-
 public struct APIClient {
-    let baseURL: URL
-    let session: URLSession
+    private let baseURL: URL
+    private let session: URLSession
 
     public init(baseURL: URL, session: URLSession = .shared) {
         self.baseURL = baseURL
@@ -28,18 +26,13 @@ public struct APIClient {
             request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         }
 
-        do {
-            let (data, response) = try await session.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse,
-                  200..<300 ~= httpResponse.statusCode else {
-                throw APIError.invalidResponse
-            }
+        let (data, response) = try await session.data(for: request)
 
-            return try JSONDecoder().decode(T.self, from: data)
-        } catch let error as DecodingError {
-            throw APIError.decodingError(error)
-        } catch {
-            throw APIError.networkError(error)
+        guard let httpResponse = response as? HTTPURLResponse,
+              200..<300 ~= httpResponse.statusCode else {
+            throw APIError.invalidResponse
         }
+
+        return try JSONDecoder().decode(T.self, from: data)
     }
 }
