@@ -11,22 +11,26 @@ public struct APIClient {
     let baseURL: URL
     let session: URLSession
 
-    public init(baseURL: URL) {
-        self.baseURL = baseURL
-        self.session = .shared
-    }
-
-    public init(baseURL: URL, session: URLSession) {
+    public init(baseURL: URL, session: URLSession = .shared) {
         self.baseURL = baseURL
         self.session = session
     }
 
-    public func performRequest<T: Decodable>(path: String) async throws -> T {
-        let url = baseURL.appendingPathComponent(path)
+    public func performRequest<T: Decodable>(
+        _ endpoint: Endpoint,
+        as type: T.Type
+    ) async throws -> T {
+        let url = baseURL.appendingPathComponent(endpoint.path)
+        var request = URLRequest(url: url)
+        request.httpMethod = endpoint.method
+
+        if let body = endpoint.body {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
 
         do {
-            let (data, response) = try await session.data(from: url)
-
+            let (data, response) = try await session.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse,
                   200..<300 ~= httpResponse.statusCode else {
                 throw APIError.invalidResponse
